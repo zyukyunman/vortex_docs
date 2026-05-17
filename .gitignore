@@ -1,0 +1,12 @@
+.DS_Store
+.obsidian/workspace*.json
+
+# 原始资料保留在本地，避免把书籍、论文、网页存档直接发布到公开 GitHub。
+library/books/*
+!library/books/README.md
+library/papers/*
+!library/papers/README.md
+library/articles/*
+!library/articles/README.md
+library/indexes/*
+!library/indexes/README.md
