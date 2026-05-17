@@ -19,7 +19,9 @@ updated: 2026-05-17
 
 Codex UI 是总控台：看状态、看 diff、看产物、发起新任务、暂停或恢复自动化。
 
-飞书是提醒通道：有实质进展、阻塞或需要用户决策时可以推送短消息；没有新动作价值的普通心跳不推送。状态事实仍以状态卡、handoff、研究总表和 artifact 为准。
+飞书是提醒通道：有实质进展、阶段性结论、阻塞或需要用户决策时推送短消息；没有新动作价值的普通心跳不推送。状态事实仍以状态卡、handoff、研究总表和 artifact 为准。自动化只是通知功能的使用方，必须走 `vortex_quant` 的后台通知服务/通知路由，不直接执行飞书脚本或绕过通知审计。
+
+知识沉淀不是把 inbox 全量搬进 `knowledge/`。自动化应在资料精选阶段判断 `archive_action`：值得长期保留的资料写成短来源卡、阅读笔记或可行性备忘录；噪声、重复或证据不足的资料只留在巡检文件里。
 
 当前更正：为了让上下文维持在同一个 session，周度资料扫描、精华汇总、因子研究和归档关闭不再拆成两个 cron。它们合并进一个 heartbeat：`Vortex 周度资料到因子研究闭环`。
 
@@ -29,8 +31,8 @@ Codex UI 是总控台：看状态、看 diff、看产物、发起新任务、暂
 
 | 名称 | 类型 | 状态 | 工作区 | 角色 |
 |---|---|---|---|---|
-| `量化资料周度巡检` | cron | PAUSED | `/Users/zyukyunman/Documents/vortex_docs` | 已暂停；功能并入同一 heartbeat |
-| `量化资料精选与因子线索交接` | cron | PAUSED | `/Users/zyukyunman/Documents/vortex_docs` | 已暂停；功能并入同一 heartbeat |
+| `量化资料周度巡检` | cron | PAUSED | `../vortex_docs` | 已暂停；功能并入同一 heartbeat |
+| `量化资料精选与因子线索交接` | cron | PAUSED | `../vortex_docs` | 已暂停；功能并入同一 heartbeat |
 | `Vortex 周度资料到因子研究闭环` | heartbeat | ACTIVE | `vortex_docs` + `vortex_quant` + `vortex_workspace` | 每 2 小时醒来检查；同一线程内完成资料搜索、精华汇总、seed 选择、因子研究、归档或关闭 |
 
 已有设计文档：
@@ -112,7 +114,7 @@ heartbeat 的硬要求：
 - 每轮先读状态卡。
 - 每轮写回本轮产物、证据、命令和下一轮唯一目标。
 - 如果状态不一致，先修状态，不继续推进研究。
-- 有实质进展、阻塞或需要用户决策时，可以通过飞书发送短提醒；没有新证据或新决策时不打扰。
+- 有实质进展、阶段性结论、阻塞或需要用户决策时，通过后台通知服务发送飞书短提醒；没有新证据或新决策时不打扰。
 - 不能自动提交 git。
 - 不能把研究结论直接推进实盘路径。
 
@@ -133,9 +135,11 @@ flowchart TD
 1. Heartbeat 每次醒来先检查 `factor_research_state.md` 是否有未完成研究。
 2. 有未完成研究时，先推进到归档或关闭，不开新题。
 3. 没有活跃研究且本周未扫描时，先读取 [[量化因子研究入口地图]] 作为资料来源总表，再搜索外部资料并写入 `inbox/quant-research/`。
-4. 从本周资料里最多汇总 3 条精华 seed，只选择 1 条进入因子研究。
-5. 研究不能停在 `promising`；必须继续到 full eval、risk review、archive、close 或等待用户 seed。
-6. Heartbeat 可以每 2 小时醒来一次，但周度状态卡负责防止同一周重复扫描和重复开题。
+4. 从本周资料里最多汇总 3 条精华 seed，并为每条给出 `archive_action`。
+5. 值得长期保留的文章或论文要沉淀到 `knowledge/`：来源卡、阅读笔记、可行性备忘录或 skill 候选；不值得保留的标 `no_archive`。
+6. 只选择 1 条进入因子研究。
+7. 研究不能停在 `promising`；必须继续到 full eval、risk review、archive、close 或等待用户 seed。
+8. Heartbeat 可以每 2 小时醒来一次，但周度状态卡负责防止同一周重复扫描和重复开题。
 
 ## 任务模板
 
@@ -222,6 +226,6 @@ flowchart TD
 
 1. 暂停两个独立 cron，避免每周创建新上下文。
 2. 将 `Vortex 因子研究长跑接力` 改成 `Vortex 周度资料到因子研究闭环` heartbeat，并把醒来间隔调整为每 2 小时。
-3. 新增周度闭环状态卡：`/Users/zyukyunman/Documents/vortex_workspace/research/automation/weekly_research_cycle_state.md`。
+3. 新增周度闭环状态卡：`../vortex_workspace/research/automation/weekly_research_cycle_state.md`。
 4. Heartbeat 当前已完成 `regime-gated tail-risk` 的归档关闭；下一步从 [[量化因子研究入口地图]] 启动本周资料扫描。
 5. 暂不引入外部 agent 框架。
