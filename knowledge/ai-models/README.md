@@ -2,7 +2,7 @@
 tags: [量化知识库, 量化知识库/索引, 量化知识库/AI模型]
 aliases: [AI模型知识]
 created: 2026-05-17
-updated: 2026-05-17
+updated: 2026-05-19
 ---
 
 # AI 模型知识
@@ -20,3 +20,4 @@ updated: 2026-05-17
 
 - [[低成本AI Agent研究架构]]：在预算有限、优先使用 Codex 订阅的前提下，如何选择 agent 框架、本地模型和研究流程边界。
 - [[Codex自动化落地方案]]：只使用 Codex 交互线程、cron 自动化、heartbeat 接力和 UI 审阅来组织 AI agent 工作。
+- [[FactorEngine失败经验库因子挖掘线索]]：程序级因子挖掘、失败经验库和有界 mutation 的自动化方法候选。

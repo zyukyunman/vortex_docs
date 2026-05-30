@@ -2,7 +2,7 @@
 tags: [量化知识库, 量化知识库/AI模型, 量化知识库/研究方法, 量化知识库/流程]
 aliases: [Codex自动化落地方案, Codex-only Agent工作法]
 created: 2026-05-17
-updated: 2026-05-17
+updated: 2026-05-19
 ---
 
 # Codex 自动化落地方案
@@ -23,7 +23,7 @@ Codex UI 是总控台：看状态、看 diff、看产物、发起新任务、暂
 
 知识沉淀不是把 inbox 全量搬进 `knowledge/`。自动化应在资料精选阶段判断 `archive_action`：值得长期保留的资料写成短来源卡、阅读笔记或可行性备忘录；噪声、重复或证据不足的资料只留在巡检文件里。
 
-当前更正：为了让上下文维持在同一个 session，周度资料扫描、精华汇总、因子研究和归档关闭不再拆成两个 cron。它们合并进一个 heartbeat：`Vortex 周度资料到因子研究闭环`。
+当前更正：为了让上下文维持在同一个 session，资料扫描、精华汇总、因子研究和归档关闭不再拆成两个 cron。它们合并进一个 rolling heartbeat：`Vortex 滚动资料到因子研究闭环`。自然周只作为日志标签，不再限制一周只能做一轮；只要没有活跃因子研究，且新资料能形成合格 seed，就允许进入下一轮。
 
 ## 当前可用资产
 
@@ -33,7 +33,7 @@ Codex UI 是总控台：看状态、看 diff、看产物、发起新任务、暂
 |---|---|---|---|---|
 | `量化资料周度巡检` | cron | PAUSED | `../vortex_docs` | 已暂停；功能并入同一 heartbeat |
 | `量化资料精选与因子线索交接` | cron | PAUSED | `../vortex_docs` | 已暂停；功能并入同一 heartbeat |
-| `Vortex 周度资料到因子研究闭环` | heartbeat | ACTIVE | `vortex_docs` + `vortex_quant` + `vortex_workspace` | 每 2 小时醒来检查；同一线程内完成资料搜索、精华汇总、seed 选择、因子研究、归档或关闭 |
+| `Vortex 滚动资料到因子研究闭环` | heartbeat | ACTIVE | `vortex_docs` + `vortex_quant` + `vortex_workspace` | 每 2 小时醒来检查；同一线程内完成资料搜索、精华汇总、seed 选择、因子研究、归档或关闭；不按自然周限流 |
 
 已有设计文档：
 
@@ -56,7 +56,7 @@ Codex UI 是总控台：看状态、看 diff、看产物、发起新任务、暂
 
 不适用：
 
-- 每周重复资料巡检。
+- 固定低风险资料巡检。
 - 固定格式归档。
 - 没有明确目标的大范围搜索。
 
@@ -71,8 +71,8 @@ Codex UI 是总控台：看状态、看 diff、看产物、发起新任务、暂
 
 适用：
 
-- 每周资料巡检。
-- 每周证据提炼。
+- 资料巡检。
+- 证据提炼。
 - 候选议题池维护。
 - 学习周报。
 - 文档断链校验。
@@ -118,28 +118,29 @@ heartbeat 的硬要求：
 - 不能自动提交 git。
 - 不能把研究结论直接推进实盘路径。
 
-## 每周运行节奏
+## 滚动运行节奏
 
 ```mermaid
 flowchart TD
   A["Heartbeat: 检查是否有未完成研究"] --> B["未完成: 继续评测/证据审查/归档关闭"]
-  A --> C["无活跃研究: 本周资料扫描"]
+  A --> C["无活跃研究: 资料扫描或处理新资料"]
   C --> D["精华汇总: 最多 3 条 seed"]
-  D --> E["选择 1 个主 seed"]
+  D --> E["选择 1 个当前活跃 seed"]
   E --> F["vortex_quant 因子研究"]
   F --> G["归档 / 关闭 / 等待用户"]
+  G --> C
 ```
 
 建议节奏：
 
 1. Heartbeat 每次醒来先检查 `factor_research_state.md` 是否有未完成研究。
 2. 有未完成研究时，先推进到归档或关闭，不开新题。
-3. 没有活跃研究且本周未扫描时，先读取 [[量化因子研究入口地图]] 作为资料来源总表，再搜索外部资料并写入 `inbox/quant-research/`。
-4. 从本周资料里最多汇总 3 条精华 seed，并为每条给出 `archive_action`。
+3. 没有活跃研究时，先读取 [[量化因子研究入口地图]] 作为资料来源总表，再搜索外部资料或处理用户标记的新资料，并写入 `inbox/quant-research/`。
+4. 从本轮资料里最多汇总 3 条精华 seed，并为每条给出 `archive_action`。
 5. 值得长期保留的文章或论文要沉淀到 `knowledge/`：来源卡、阅读笔记、可行性备忘录或 skill 候选；不值得保留的标 `no_archive`。
-6. 只选择 1 条进入因子研究。
+6. 同一时间只选择 1 条进入因子研究；当前 seed 归档或关闭后，可在同一自然周继续下一条。
 7. 研究不能停在 `promising`；必须继续到 full eval、risk review、archive、close 或等待用户 seed。
-8. Heartbeat 可以每 2 小时醒来一次，但周度状态卡负责防止同一周重复扫描和重复开题。
+8. Heartbeat 可以每 2 小时醒来一次，但状态卡只按来源、digest artifact 和活跃 seed 去重；自然周不再阻断新一轮。
 
 ## 任务模板
 
@@ -224,8 +225,8 @@ flowchart TD
 
 ## 当前落地动作
 
-1. 暂停两个独立 cron，避免每周创建新上下文。
-2. 将 `Vortex 因子研究长跑接力` 改成 `Vortex 周度资料到因子研究闭环` heartbeat，并把醒来间隔调整为每 2 小时。
-3. 新增周度闭环状态卡：`../vortex_workspace/research/automation/weekly_research_cycle_state.md`。
-4. Heartbeat 当前已完成 `regime-gated tail-risk` 的归档关闭；下一步从 [[量化因子研究入口地图]] 启动本周资料扫描。
+1. 暂停两个独立 cron，避免每轮创建新上下文。
+2. 将 `Vortex 因子研究长跑接力` 改成 `Vortex 滚动资料到因子研究闭环` heartbeat，并把醒来间隔调整为每 2 小时。
+3. 继续使用兼容旧入口的状态卡：`../vortex_workspace/research/automation/weekly_research_cycle_state.md`；文件名保留，但运行规则已改为 rolling multi-round。
+4. Heartbeat 当前已选择 `slope_strength_retail_extrapolation` 作为滚动活跃 seed；下一步从 archive lookup 开始，不直接写 runner 或跑 IC。
 5. 暂不引入外部 agent 框架。
